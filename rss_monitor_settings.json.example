@@ -9,6 +9,8 @@
   },
   "negative_topics": {},
   "interval_hours": 6,
+  "model_name": "paraphrase-multilingual-MiniLM-L12-v2",
+  "similarity_threshold": 0.4,
   "output": {
     "discord_channel_id": "YOUR_DISCORD_CHANNEL_ID_HERE"
   }
