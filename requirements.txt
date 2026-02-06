@@ -1,0 +1,5 @@
+beautifulsoup4==4.14.3
+feedparser==6.0.12
+lxml==6.0.2
+requests==2.31.0
+sentence-transformers==5.2.2
