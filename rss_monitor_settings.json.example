@@ -1,0 +1,15 @@
+{
+  "feeds": [
+    {"name": "RedFlagDeals", "url": "https://forums.redflagdeals.com/feed/forum/9", "type": "rss"},
+    {"name": "pari.cafe", "url": "https://pari.cafe/public.rss", "type": "rss"}
+  ],
+  "positive_topics": {
+    "Apple products deals over 30% off": 5,
+    "Discussions about distributed systems and AI infra": 5
+  },
+  "negative_topics": {},
+  "interval_hours": 6,
+  "output": {
+    "discord_channel_id": "YOUR_DISCORD_CHANNEL_ID_HERE"
+  }
+}
