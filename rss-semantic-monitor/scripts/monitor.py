@@ -52,9 +52,9 @@ class OpenClawCLINotifier(Notifier):
             os.system(f"openclaw message send --target {self.channel_id} --message '{safe_msg}'")
 
 # --- Scrapers ---
-def fetch_dealmoon():
+def fetch_html_selector_source(url, name):
     try:
-        r = requests.get("https://www.dealmoon.ca/", timeout=15)
+        r = requests.get(url, timeout=15)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, 'lxml')
         items = []
@@ -65,11 +65,11 @@ def fetch_dealmoon():
                 items.append({
                     "title": title_tag.get_text(strip=True),
                     "link": link_tag['href'],
-                    "source": "Dealmoon"
+                    "source": name
                 })
         return items
     except Exception as e:
-        print(f"Error fetching Dealmoon: {e}")
+        print(f"Error fetching {name}: {e}")
         return []
 
 def fetch_rss(url, name):
@@ -101,7 +101,7 @@ def main():
     for feed in config['feeds']:
         print(f"Fetching {feed['name']}...")
         if "dealmoon" in feed['url'].lower():
-            all_items.extend(fetch_dealmoon())
+            all_items.extend(fetch_html_selector_source(feed['url'], feed['name']))
         else:
             all_items.extend(fetch_rss(feed['url'], feed['name']))
 
