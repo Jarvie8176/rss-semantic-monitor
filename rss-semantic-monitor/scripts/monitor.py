@@ -10,7 +10,6 @@ from sentence_transformers import SentenceTransformer, util
 # --- Configuration ---
 CONFIG_PATH = "rss_monitor_settings.json"
 HISTORY_PATH = "processed_history.json"
-MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
 def load_config():
     with open(CONFIG_PATH, 'r') as f:
@@ -55,8 +54,11 @@ def main():
     config = load_config()
     history = load_history()
     
-    print("Loading Local Embedding Model...")
-    model = SentenceTransformer(MODEL_NAME)
+    model_name = config.get('model_name', "paraphrase-multilingual-MiniLM-L12-v2")
+    threshold = config.get('similarity_threshold', 0.4)
+    
+    print(f"Loading Local Embedding Model ({model_name})...")
+    model = SentenceTransformer(model_name)
     
     # Pre-encode topics
     pos_topics = list(config.get('positive_topics', {}).keys())
@@ -84,7 +86,7 @@ def main():
         similarities = util.cos_sim(item_embedding, topic_embeddings)[0]
         max_sim = max(similarities).item()
         
-        if max_sim > 0.4: # Threshold
+        if max_sim > threshold: # Threshold
             print(f"Match Found: {item['title']} (Sim: {max_sim:.2f})")
             filtered_items.append(item)
             history.append(item_hash)
