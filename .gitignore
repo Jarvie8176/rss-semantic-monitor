@@ -1,0 +1,7 @@
+rss-semantic-monitor/venv/
+rss-semantic-monitor/__pycache__/
+*.pyc
+processed_history.json
+rss_monitor_settings.json
+.DS_Store
+.env
