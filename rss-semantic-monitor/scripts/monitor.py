@@ -17,8 +17,11 @@ def load_config():
 
 def load_history():
     if os.path.exists(HISTORY_PATH):
-        with open(HISTORY_PATH, 'r') as f:
-            return json.load(f)
+        try:
+            with open(HISTORY_PATH, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return []
     return []
 
 def save_history(history):
@@ -28,26 +31,54 @@ def save_history(history):
 def get_hash(text):
     return hashlib.md5(text.encode()).hexdigest()
 
+# --- Notifiers ---
+class Notifier:
+    def notify(self, items):
+        raise NotImplementedError
+
+class OpenClawCLINotifier(Notifier):
+    def __init__(self, channel_id):
+        self.channel_id = channel_id
+
+    def notify(self, items):
+        if not self.channel_id:
+            print("Skipping notification: No channel_id provided.")
+            return
+        
+        for item in items:
+            msg = f"发现匹配内容：{item['title']} - {item['link']}"
+            # Escape single quotes for shell command
+            safe_msg = msg.replace("'", "'\"'\"'")
+            os.system(f"openclaw message send --target {self.channel_id} --message '{safe_msg}'")
+
 # --- Scrapers ---
-def fetch_dealmoon():
-    # Use web_fetch logic simulation or direct requests if possible
-    # For now, we simulate structured extraction from Dealmoon
+def fetch_html_selector_source(url, name):
     try:
-        r = requests.get("https://www.dealmoon.ca/", timeout=15)
+        r = requests.get(url, timeout=15)
+        r.raise_for_status()
         soup = BeautifulSoup(r.text, 'lxml')
         items = []
         for card in soup.select(".mlist .item"):
-            title = card.select_one(".title").get_text(strip=True) if card.select_one(".title") else ""
-            link = card.select_one("a")['href'] if card.select_one("a") else ""
-            if title:
-                items.append({"title": title, "link": link, "source": "Dealmoon"})
+            title_tag = card.select_one(".title")
+            link_tag = card.select_one("a")
+            if title_tag and link_tag:
+                items.append({
+                    "title": title_tag.get_text(strip=True),
+                    "link": link_tag['href'],
+                    "source": name
+                })
         return items
-    except:
+    except Exception as e:
+        print(f"Error fetching {name}: {e}")
         return []
 
 def fetch_rss(url, name):
-    feed = feedparser.parse(url)
-    return [{"title": entry.title, "link": entry.link, "source": name} for entry in feed.entries]
+    try:
+        feed = feedparser.parse(url)
+        return [{"title": entry.title, "link": entry.link, "source": name} for entry in feed.entries]
+    except Exception as e:
+        print(f"Error fetching RSS {name}: {e}")
+        return []
 
 # --- Main Logic ---
 def main():
@@ -60,7 +91,6 @@ def main():
     print(f"Loading Local Embedding Model ({model_name})...")
     model = SentenceTransformer(model_name)
     
-    # Pre-encode topics
     pos_topics = list(config.get('positive_topics', {}).keys())
     if not pos_topics:
         print("No topics configured. Exiting.")
@@ -70,8 +100,8 @@ def main():
     all_items = []
     for feed in config['feeds']:
         print(f"Fetching {feed['name']}...")
-        if "dealmoon" in feed['url']:
-            all_items.extend(fetch_dealmoon())
+        if "dealmoon" in feed['url'].lower():
+            all_items.extend(fetch_html_selector_source(feed['url'], feed['name']))
         else:
             all_items.extend(fetch_rss(feed['url'], feed['name']))
 
@@ -81,35 +111,22 @@ def main():
         if item_hash in history:
             continue
         
-        # L2: Local Semantic Filter
         item_embedding = model.encode(item['title'])
         similarities = util.cos_sim(item_embedding, topic_embeddings)[0]
         max_sim = max(similarities).item()
         
-        if max_sim > threshold: # Threshold
+        if max_sim > threshold:
             print(f"Match Found: {item['title']} (Sim: {max_sim:.2f})")
             filtered_items.append(item)
             history.append(item_hash)
     
-    save_history(history)
-    
-    # L3: Cloud AI Summary & Discord Delivery
     if filtered_items:
-        print(f"\nSending {len(filtered_items)} items to AI and Discord...")
-        
-        target_channel = config.get('output', {}).get('discord_channel_id')
-        if not target_channel:
-            print("Error: No discord_channel_id found in config['output'].")
-            return
-
-        # 构造待分析的内容
-        content_to_analyze = "\n".join([f"- {item['title']} ({item['link']})" for item in filtered_items])
-        
-        print(f"DISCORD_PUSH_TARGET: {target_channel}")
-        
-        for item in filtered_items:
-            # 使用配置中的 channel id
-            os.system(f"openclaw message send --target {target_channel} --message '发现匹配内容：{item['title']} - {item['link']}'")
+        channel_id = config.get('output', {}).get('discord_channel_id')
+        notifier = OpenClawCLINotifier(channel_id)
+        notifier.notify(filtered_items)
+    
+    save_history(history)
+    print("Done.")
 
 if __name__ == "__main__":
     main()
