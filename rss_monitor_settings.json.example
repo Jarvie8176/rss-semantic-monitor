@@ -1,0 +1,15 @@
+{
+  "feeds": [
+    {"name": "TechNews", "url": "https://example.com/rss", "type": "rss"},
+    {"name": "DealFinder", "url": "https://deals.example.com/feed", "type": "rss"}
+  ],
+  "positive_topics": {
+    "Artificial Intelligence": 5,
+    "Mechanical Keyboards": 3
+  },
+  "negative_topics": {},
+  "interval_hours": 6,
+  "output": {
+    "discord_channel_id": "YOUR_DISCORD_CHANNEL_ID_HERE"
+  }
+}
